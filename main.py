@@ -7,9 +7,8 @@ app = FastAPI(
     version="1.0.0"
 )
 
-# 2. Lo incluimos en la app
 app.include_router(attendance.router)
 
 @app.get("/")
 def read_root():
-    return {"mensaje": "La API está funcionando correctamente 🚀"}
+    return {"mensaje": "La API está funcionando correctamente"}

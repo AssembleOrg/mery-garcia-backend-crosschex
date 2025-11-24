@@ -2,6 +2,7 @@ from datetime import datetime, date
 from typing import List, Dict
 from repositories.crosschex_repository import CrossChexRepository
 from models.schemas import AttendanceRecordDTO
+import arrow
 
 class AttendanceService:
     def __init__(self):
@@ -13,26 +14,25 @@ class AttendanceService:
         report = self._calculate_hours(records)
         return report
 
-    def _calculate_hours(self, records: List[AttendanceRecordDTO]):
+    def _calculate_hours(self, records):
         grouped_data = {}
 
-        #Agrupación
         for record in records:
             emp_id = record.employee.workno
             emp_name = f"{record.employee.first_name} {record.employee.last_name}"
-            day = record.checktime.date() # Solo la fecha (2025-10-01)
             
-            # se crea id si no existe
+            fecha_arrow = arrow.get(record.checktime).to('America/Argentina/Buenos_Aires')
+            
+            day_key = fecha_arrow.format('YYYY-MM-DD') 
+            
             if emp_id not in grouped_data:
                 grouped_data[emp_id] = {"name": emp_name, "days": {}}
             
-            if day not in grouped_data[emp_id]["days"]:
-                grouped_data[emp_id]["days"][day] = []
+            if day_key not in grouped_data[emp_id]["days"]:
+                grouped_data[emp_id]["days"][day_key] = []
 
-            # agrego la hora a ese día
-            grouped_data[emp_id]["days"][day].append(record.checktime)
+            grouped_data[emp_id]["days"][day_key].append(fecha_arrow)
 
-        # PASO B: Cálculo (Min/Max)
         final_report = []
         
         for emp_id, data in grouped_data.items():
@@ -42,23 +42,21 @@ class AttendanceService:
                 "details": []
             }
             
-            for day, times in data["days"].items():
-                # se ordena las horas
+            for day_key, times in data["days"].items():
                 times.sort()
                 
-                entrada = times[0]  # primera fichada
-                salida = times[-1]  # última fichada
+                entrada = times[0]
+                salida = times[-1]
                 
-                # si fichó una vez, entrada y salida son iguales (0 horas)
                 horas_trabajadas = 0
                 if len(times) > 1:
-                    diff = salida - entrada
-                    horas_trabajadas = diff.total_seconds() / 3600 # Convertir a horas
+                    diff = salida - entrada 
+                    horas_trabajadas = diff.total_seconds() / 3600
                 
                 emp_report["details"].append({
-                    "date": day,
-                    "entry": entrada.strftime("%H:%M:%S"),
-                    "exit": salida.strftime("%H:%M:%S"),
+                    "date": entrada.format('DD/MM/YYYY'), 
+                    "entry": entrada.format('HH:mm:ss'),
+                    "exit": salida.format('HH:mm:ss'),
                     "hours": round(horas_trabajadas, 2)
                 })
             
